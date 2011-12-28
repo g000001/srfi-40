@@ -8,7 +8,7 @@
 ;;; have promises that answer #t to stream?
 ;;; This requires lots of complicated type conversions.
 
-(define-record-type s..promise (make-s>>promise kind content) s..promise?
+(define-record-type s>>promise (make-s>>promise kind content) s>>promise?
   (kind    s>>promise-kind    set-s>>promise-kind!)
   (content s>>promise-content set-s>>promise-content!) )
 
