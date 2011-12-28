@@ -8,24 +8,24 @@
 ;;; have promises that answer #t to stream?
 ;;; This requires lots of complicated type conversions.
 
-(define-record-type s>>promise (make-s>>promise kind content) s>>promise?
+(define-record-type s..promise (make-s>>promise kind content) s..promise?
   (kind    s>>promise-kind    set-s>>promise-kind!)
-  (content s>>promise-content set-s>>promise-content!))
+  (content s>>promise-content set-s>>promise-content!) )
 
 (define-record-type box (make-box x) box?
-  (x unbox set-box!))
+  (x unbox set-box!) )
 
 (define-syntax srfi-40>>lazy
   (syntax-rules ()
     ((srfi-40>>lazy exp)
-     (make-box (make-s>>promise 'lazy (lambda () exp))))))
+     (make-box (make-s>>promise 'lazy (lambda () exp))) )))
 
 (defun srfi-40>>eager (x)
-  (make-stream (make-box (make-s>>promise 'eager x))))
+  (make-stream (make-box (make-s>>promise 'eager x))) )
 
 (define-syntax srfi-40>>delay
   (syntax-rules ()
-    ((srfi-40>>delay exp) (srfi-40>>lazy (srfi-40>>eager exp)))))
+    ((srfi-40>>delay exp) (srfi-40>>lazy (srfi-40>>eager exp))) ))
 
 (defun srfi-40>>force (promise)
   (let ((content (unbox promise)))
@@ -33,13 +33,13 @@
       ((eager) (s>>promise-content content))
       ((lazy)
        (let* ((promise* (stream-promise (funcall (s>>promise-content content))))
-              (content  (unbox promise)))
+              (content  (unbox promise)) )
          (if (not (eql 'eager (s>>promise-kind content)))
              (progn
                (set-s>>promise-kind! content (s>>promise-kind (unbox promise*)))
                (set-s>>promise-content! content (s>>promise-content (unbox promise*)))
-               (set-box! promise* content)))
-         (srfi-40>>force promise))))))
+               (set-box! promise* content) ))
+         (srfi-40>>force promise) )))))
 
 ;;; STREAM -- LIBRARY OF SYNTAX AND FUNCTIONS TO MANIPULATE STREAMS
 
@@ -56,15 +56,16 @@
 (define-record-type stream-type
   (make-stream promise)
   stream?
-  (promise stream-promise))
+  (promise stream-promise) )
 
 ;;; UTILITY FUNCTIONS
 
 ;; STREAM-ERROR message -- print message then abort execution
 ;  replace this with a call to the native error handler
 ;  if stream-error returns, so will the stream library function that called it
-(defun stream-error (&rest args)
-  (apply #'error args))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defun stream-error (&rest args)
+    (apply #'error args) ))
 
 ;;; STREAM SYNTAX AND FUNCTIONS
 
