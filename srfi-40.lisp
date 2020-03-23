@@ -1,6 +1,6 @@
 ;;;; srfi-40.lisp
 
-(cl:in-package :srfi-40.internal)
+(cl:in-package "https://github.com/g000001/srfi-40#internals")
 
 ;;; PROMISES A LA SRFI-45:
 
@@ -8,38 +8,38 @@
 ;;; have promises that answer #t to stream?
 ;;; This requires lots of complicated type conversions.
 
-(define-record-type s>>promise (make-s>>promise kind content) s>>promise?
-  (kind    s>>promise-kind    set-s>>promise-kind!)
-  (content s>>promise-content set-s>>promise-content!) )
+(define-record-type s$promise (make-s$promise kind content) s$promise?
+  (kind    s$promise-kind    set-s$promise-kind!)
+  (content s$promise-content set-s$promise-content!) )
 
 (define-record-type box (make-box x) box?
   (x unbox set-box!) )
 
-(define-syntax srfi-40>>lazy
+(define-syntax srfi-40$lazy
   (syntax-rules ()
-    ((srfi-40>>lazy exp)
-     (make-box (make-s>>promise 'lazy (lambda () exp))) )))
+    ((srfi-40$lazy exp)
+     (make-box (make-s$promise 'lazy (lambda () exp))) )))
 
-(defun srfi-40>>eager (x)
-  (make-stream (make-box (make-s>>promise 'eager x))) )
+(defun srfi-40$eager (x)
+  (make-stream (make-box (make-s$promise 'eager x))) )
 
-(define-syntax srfi-40>>delay
+(define-syntax srfi-40$delay
   (syntax-rules ()
-    ((srfi-40>>delay exp) (srfi-40>>lazy (srfi-40>>eager exp))) ))
+    ((srfi-40$delay exp) (srfi-40$lazy (srfi-40$eager exp))) ))
 
-(defun srfi-40>>force (promise)
+(defun srfi-40$force (promise)
   (let ((content (unbox promise)))
-    (case (s>>promise-kind content)
-      ((eager) (s>>promise-content content))
+    (case (s$promise-kind content)
+      ((eager) (s$promise-content content))
       ((lazy)
-       (let* ((promise* (stream-promise (funcall (s>>promise-content content))))
+       (let* ((promise* (stream-promise (funcall (s$promise-content content))))
               (content  (unbox promise)) )
-         (if (not (eql 'eager (s>>promise-kind content)))
+         (if (not (eql 'eager (s$promise-kind content)))
              (progn
-               (set-s>>promise-kind! content (s>>promise-kind (unbox promise*)))
-               (set-s>>promise-content! content (s>>promise-content (unbox promise*)))
+               (set-s$promise-kind! content (s$promise-kind (unbox promise*)))
+               (set-s$promise-content! content (s$promise-content (unbox promise*)))
                (set-box! promise* content) ))
-         (srfi-40>>force promise) )))))
+         (srfi-40$force promise) )))))
 
 ;;; STREAM -- LIBRARY OF SYNTAX AND FUNCTIONS TO MANIPULATE STREAMS
 
@@ -70,45 +70,46 @@
 ;;; STREAM SYNTAX AND FUNCTIONS
 
 ;; STREAM-NULL -- the distinguished nil stream
-(or (boundp 'stream-null)
-    (defconstant stream-null (make-stream (srfi-40>>delay '()))))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (or (boundp 'stream-null)
+      (defconstant stream-null (make-stream (srfi-40$delay '())))))
 
 ;; STREAM-CONS object stream -- primitive constructor of streams
 (define-syntax stream-cons
   (syntax-rules ()
     ((stream-cons obj strm)
      (make-stream
-      (srfi-40>>delay
+      (srfi-40$delay
        (if (not (stream? strm))
            (stream-error "attempt to stream-cons onto non-stream")
            (cons obj strm)))))))
 
 ;; STREAM-NULL? object -- #t if object is the null stream, #f otherwise
 (defun stream-null? (obj)
-  (and (stream? obj) (null (srfi-40>>force (stream-promise obj)))))
+  (and (stream? obj) (null (srfi-40$force (stream-promise obj)))))
 
 ;; STREAM-PAIR? object -- #t if object is a non-null stream, #f otherwise
 (defun stream-pair? (obj)
-  (and (stream? obj) (not (null (srfi-40>>force (stream-promise obj))))))
+  (and (stream? obj) (not (null (srfi-40$force (stream-promise obj))))))
 
 ;; STREAM-CAR stream -- first element of stream
 (defun stream-car (strm)
   (cond ((not (stream? strm)) (stream-error "attempt to take stream-car of non-stream"))
         ((stream-null? strm)  (stream-error "attempt to take stream-car of null stream"))
-        (:else (car (srfi-40>>force (stream-promise strm))))))
+        (:else (car (srfi-40$force (stream-promise strm))))))
 
 ;; STREAM-CDR stream -- remaining elements of stream after first
 (defun stream-cdr (strm)
   (cond ((not (stream? strm)) (stream-error "attempt to take stream-cdr of non-stream"))
         ((stream-null? strm)  (stream-error "attempt to take stream-cdr of null stream"))
-        (:else (cdr (srfi-40>>force (stream-promise strm))))))
+        (:else (cdr (srfi-40$force (stream-promise strm))))))
 
 ;; STREAM-DELAY object -- the essential stream mechanism
 (define-syntax stream-delay
   (syntax-rules ()
     ((stream-delay expr)
       (make-stream
-        (srfi-40>>lazy expr)))))
+        (srfi-40$lazy expr)))))
 
 ;; STREAM object ... -- new stream whose elements are object ...
 (defun stream (&rest objs)
